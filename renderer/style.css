@@ -1,0 +1,540 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+/* Screen Management */
+.screen {
+    display: none;
+    width: 100vw;
+    height: 100vh;
+    padding: 20px;
+}
+
+.screen.active {
+    display: flex;
+}
+
+/* ==================== CAMERA SCREEN ==================== */
+#cameraScreen {
+    gap: 20px;
+}
+
+.camera-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 20px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    gap: 20px;
+}
+
+#cameraFeed {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: calc(100% - 120px);
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    border-radius: 15px;
+    background: #000;
+}
+
+#countdown {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 120px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+    z-index: 10;
+}
+
+.capture-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: white;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.capture-btn:hover {
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+.capture-btn:active {
+    transform: scale(0.95);
+}
+
+.capture-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.capture-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #ff4757;
+}
+
+/* Preview Sidebar */
+.preview-sidebar {
+    width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.preview-box {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: rgba(255, 255, 255, 0.1);
+    border: 3px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.preview-box:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.preview-box span {
+    font-size: 48px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.preview-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.preview-box.captured {
+    border-style: solid;
+    border-color: #5efc82;
+    background: rgba(94, 252, 130, 0.1);
+}
+
+.preview-box.captured span {
+    display: none;
+}
+
+/* Switch Camera Button */
+.switch-camera-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.switch-camera-btn:hover {
+    background: white;
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.switch-camera-btn:active {
+    transform: scale(0.95);
+}
+
+.switch-camera-btn svg {
+    color: #667eea;
+    transition: transform 0.3s ease;
+}
+
+.switch-camera-btn:hover svg {
+    transform: rotate(180deg);
+}
+
+/* ==================== EDITOR SCREEN ==================== */
+#editorScreen {
+    gap: 30px;
+}
+
+.editor-sidebar {
+    width: 320px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 25px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.editor-sidebar::-webkit-scrollbar {
+    display: none;
+}
+
+.back-btn {
+    width: 100%;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    background: #f5f5f5;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    color: #333;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+    transform: translateX(-3px);
+}
+
+.back-btn:hover svg {
+    color: white;
+}
+
+.back-btn svg {
+    color: #667eea;
+    transition: color 0.3s ease;
+}
+
+.editor-sidebar h3 {
+    color: #333;
+    margin-bottom: 15px;
+    margin-top: 20px;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.editor-sidebar h3:first-child {
+    margin-top: 0;
+}
+
+.frames-scroll,
+.icons-scroll {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.frame-item,
+.icon-item {
+    aspect-ratio: 1;
+    cursor: pointer;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 3px solid transparent;
+    transition: all 0.3s ease;
+    background: #f5f5f5;
+}
+
+.frame-item:hover,
+.icon-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.frame-item.selected {
+    border-color: #667eea;
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+}
+
+.frame-item img,
+.icon-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Editor Preview */
+.editor-preview {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.preview-container {
+    position: relative;
+    width: auto;
+    max-width: 350px;
+    max-height: calc(100vh - 250px);
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+/* Layer 1: Photos Grid */
+.preview-photos-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.preview-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+    position: absolute;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* Layer 2: Frame Overlay */
+.preview-frame-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    z-index: 2;
+    pointer-events: none;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.preview-frame-overlay.hidden {
+    display: none;
+}
+
+/* Layer 3: Icons Container */
+.preview-icons-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+}
+
+.placed-icon {
+    position: absolute;
+    cursor: move;
+    user-select: none;
+    transition: transform 0.2s ease;
+}
+
+.placed-icon:hover {
+    transform: scale(1.1);
+}
+
+.placed-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.done-btn {
+    padding: 15px 60px;
+    font-size: 18px;
+    font-weight: bold;
+    background: linear-gradient(135deg, #5efc82 0%, #00d2ff 100%);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(94, 252, 130, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.done-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 40px rgba(94, 252, 130, 0.4);
+}
+
+.done-btn:active {
+    transform: translateY(0);
+}
+
+.done-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ==================== RESULT SCREEN ==================== */
+#resultScreen {
+    align-items: center;
+    justify-content: center;
+}
+
+.result-container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 30px;
+    padding: 50px;
+    text-align: center;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.result-container h2 {
+    color: #333;
+    margin-bottom: 30px;
+    font-size: 28px;
+}
+
+.qr-container {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+#qrCode {
+    width: 250px;
+    height: 250px;
+    margin-bottom: 20px;
+    border: 5px solid #f0f0f0;
+    border-radius: 10px;
+}
+
+.qr-container p {
+    color: #666;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+#downloadLink {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 14px;
+    transition: color 0.3s ease;
+}
+
+#downloadLink:hover {
+    color: #764ba2;
+    text-decoration: underline;
+}
+
+.result-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.action-btn {
+    padding: 12px 30px;
+    font-size: 16px;
+    font-weight: bold;
+    border: 2px solid #667eea;
+    background: white;
+    color: #667eea;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: transparent;
+}
+
+.action-btn.primary:hover {
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 1024px) {
+    .preview-container {
+        max-width: 300px;
+    }
+}
+
+@media (max-width: 768px) {
+    #cameraScreen,
+    #editorScreen {
+        flex-direction: column;
+    }
+
+    .preview-sidebar {
+        width: 100%;
+        flex-direction: row;
+    }
+
+    .editor-sidebar {
+        width: 100%;
+        max-height: 200px;
+    }
+
+    .preview-container {
+        max-width: 250px;
+    }
+
+    .frames-scroll,
+    .icons-scroll {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}

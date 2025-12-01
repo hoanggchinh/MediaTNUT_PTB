@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Booth</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Camera Screen -->
+    <div id="cameraScreen" class="screen active">
+        <div class="camera-container">
+            <video id="cameraFeed" autoplay></video>
+
+            <button id="switchCameraBtn" class="switch-camera-btn" title="Chuyển camera">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+    </svg>
+</button>
+            <canvas id="hiddenCanvas" style="display: none;"></canvas>
+            <div id="countdown"></div>
+            <button id="captureBtn" class="capture-btn">
+                <div class="capture-circle"></div>
+            </button>
+
+
+
+
+        </div>
+
+        <div class="preview-sidebar">
+            <div class="preview-box" id="preview1"><span>1</span></div>
+            <div class="preview-box" id="preview2"><span>2</span></div>
+            <div class="preview-box" id="preview3"><span>3</span></div>
+            <div class="preview-box" id="preview4"><span>4</span></div>
+        </div>
+    </div>
+
+    <!-- Editor Screen -->
+    <div id="editorScreen" class="screen">
+        <div class="editor-sidebar">
+            <h3>Chọn khung ảnh</h3>
+            <div class="frames-scroll" id="framesList"></div>
+
+            <h3>Chọn nhãn dán</h3>
+            <div class="icons-scroll" id="iconsList"></div>
+        </div>
+
+        <div class="editor-preview">
+            <div class="preview-container">
+                <!-- Layer 1: Photos grid -->
+                <div class="preview-photos-grid" id="previewPhotosGrid">
+                    <img class="preview-photo" id="previewPhoto1">
+                    <img class="preview-photo" id="previewPhoto2">
+                    <img class="preview-photo" id="previewPhoto3">
+                    <img class="preview-photo" id="previewPhoto4">
+                </div>
+
+                <!-- Layer 2: Frame overlay -->
+                <img id="previewFrameOverlay" class="preview-frame-overlay hidden">
+
+                <!-- Layer 3: Icons overlay -->
+                <div id="previewIconsContainer" class="preview-icons-container"></div>
+            </div>
+
+            <!-- Hidden canvas for final rendering -->
+            <canvas id="editorCanvas" style="display: none;"></canvas>
+
+            <button id="doneBtn" class="done-btn">Hoàn thành</button>
+        </div>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="resultScreen" class="screen">
+        <div class="result-container">
+            <h2>Ảnh của bạn đã sẵn sàng!</h2>
+            <div class="qr-container">
+                <img id="qrCode" src="" alt="QR Code">
+                <p>Quét mã QR để tải ảnh</p>
+                <a id="downloadLink" href="" target="_blank">Hoặc nhấn vào đây</a>
+            </div>
+            <div class="result-actions">
+                <button id="printBtn" class="action-btn">In ảnh</button>
+                <button id="newPhotoBtn" class="action-btn primary">Chụp ảnh mới</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -121,6 +121,8 @@ async function loadAssets() {
         frames.forEach((frame, index) => {
             const div = document.createElement('div');
             div.className = 'frame-item';
+
+            // Đảm bảo frame đầu tiên luôn được chọn lại khi loadAssets được gọi
             if (index === 0) {
                 div.classList.add('selected');
                 selectedFrame = frame.name;
@@ -134,6 +136,11 @@ async function loadAssets() {
             div.appendChild(img);
             framesList.appendChild(div);
         });
+
+        // Nếu không có frame nào, đặt selectedFrame = null
+        if (frames.length === 0) {
+            selectedFrame = null;
+        }
 
         // Render icons/stickers
         iconsList.innerHTML = '';
@@ -156,6 +163,9 @@ async function loadAssets() {
 
     } catch (error) {
         console.error('Error loading assets:', error);
+        // Đặt lại để tránh lỗi nếu không tải được assets
+        loadedFrames = [];
+        selectedFrame = null;
     }
 }
 
@@ -319,12 +329,19 @@ function goToEditor() {
 
             updateEditorPreview();
         };
+        // Thêm xử lý lỗi tải frame
         tempImg.onerror = () => {
-            console.error('Failed to load frame image');
+            console.error('Failed to load frame image for preview');
+            alert('Lỗi tải frame ảnh!');
+            // Quay lại màn hình camera nếu frame lỗi
+            backToCamera();
         };
         tempImg.src = frameData.data;
     } else {
         console.error('Frame data not found for:', selectedFrame);
+        alert('Vui lòng chọn một frame ảnh!');
+        // Quay lại màn hình camera nếu không tìm thấy frame
+        backToCamera();
     }
 }
 
@@ -354,6 +371,10 @@ function setupDragDrop() {
         e.dataTransfer.dropEffect = 'copy';
     });
 
+    // app.js
+
+// ... (bên trong hàm setupDragDrop, trong sự kiện 'drop')
+
     previewContainer.addEventListener('drop', async (e) => {
         e.preventDefault();
         const iconName = e.dataTransfer.getData('iconName');
@@ -362,15 +383,27 @@ function setupDragDrop() {
         if (!iconData) return;
 
         const rect = previewContainer.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+        // Kích thước nhãn dán mặc định là 32% (đã định nghĩa trước đó)
+        const STICKER_SIZE_PERCENT = 32;
+        const HALF_SIZE = STICKER_SIZE_PERCENT / 2; // = 16%
+
+        // 1. Tính toán tọa độ tâm thô (raw center) theo %
+        const rawX = ((e.clientX - rect.left) / rect.width) * 100;
+        const rawY = ((e.clientY - rect.top) / rect.height) * 100;
+
+        // 2. Kẹp (Clamp) tọa độ tâm để toàn bộ nhãn dán nằm trong phạm vi (16% đến 84%)
+        // Math.max(Min, Math.min(Max, Value))
+        const clampedX = Math.max(HALF_SIZE, Math.min(100 - HALF_SIZE, rawX));
+        const clampedY = Math.max(HALF_SIZE, Math.min(100 - HALF_SIZE, rawY));
+
 
         selectedStickers.push({
             name: iconName,
             data: iconData.data,
-            x: x,
-            y: y,
-            size: 32
+            x: clampedX, // Tọa độ tâm đã được giới hạn (tính theo %)
+            y: clampedY, // Tọa độ tâm đã được giới hạn (tính theo %)
+            size: STICKER_SIZE_PERCENT // Kích thước theo %
         });
 
         updateStickersPreview();
@@ -425,12 +458,22 @@ async function processAndFinish() {
 
         // Get frame dimensions
         const frameData = loadedFrames.find(f => f.name === selectedFrame);
+
+        // --- BƯỚC 1: KIỂM TRA DỮ LIỆU FRAME ĐỂ TRÁNH LỖI undefined ---
+        if (!frameData) {
+            throw new Error(`Frame data not found for selected frame: ${selectedFrame}. Assets might not be loaded.`);
+        }
+        // -----------------------------------------------------------
+
         const tempImg = new Image();
 
-        await new Promise((resolve) => {
+        // --- BƯỚC 2: THÊM reject ĐỂ TRÁNH TREO HÀM KHI TẢI ẢNH LỖI ---
+        await new Promise((resolve, reject) => {
             tempImg.onload = resolve;
+            tempImg.onerror = reject; // <-- Đã thêm reject
             tempImg.src = frameData.data;
         });
+        // -------------------------------------------------------------
 
         const frameWidth = tempImg.width;
         const frameHeight = tempImg.height;
@@ -439,7 +482,7 @@ async function processAndFinish() {
         const absoluteStickers = selectedStickers.map(sticker => ({
             name: sticker.name,
             x: (sticker.x / 100) * frameWidth - ((sticker.size / 100) * frameWidth) / 2,
-            y: (sticker.y / 100) * frameHeight - ((sticker.size / 100) * frameHeight) / 2,
+            y: (sticker.y / 100) * frameHeight - ((sticker.size / 100) * frameWidth) / 2, // Đã sửa lỗi: dùng frameWidth cho cả x và y
             size: (sticker.size / 100) * frameWidth
         }));
 
@@ -476,7 +519,9 @@ async function processAndFinish() {
         }
     } catch (error) {
         console.error('Error processing:', error);
-        alert('Có lỗi xảy ra!');
+        // THAY ĐỔI: Thêm error.message để debug dễ hơn
+        alert('Có lỗi xảy ra khi xử lý ảnh! ' + error.message);
+        // Đảm bảo nút được reset DÙ CÓ LỖI XẢY RA
         doneBtn.disabled = false;
         doneBtn.textContent = 'Hoàn thành';
     }
@@ -507,7 +552,7 @@ async function printPhoto() {
 }
 
 // Reset and start new photo session
-function resetApp() {
+async function resetApp() { // <-- THAY ĐỔI: Chuyển thành async
     capturedPhotos = [];
     selectedStickers = [];
     currentPhotoIndex = 0;
@@ -526,8 +571,8 @@ function resetApp() {
 
     captureBtn.disabled = false;
 
-    // Reload assets to reset frame selection
-    loadAssets();
+    // --- THAY ĐỔI QUAN TRỌNG: Dùng await để đảm bảo selectedFrame được gán lại ---
+    await loadAssets();
 }
 
 // Switch camera
@@ -589,7 +634,8 @@ if (document.readyState === 'loading') {
     init();
 }
 
-function init() {
+// --- THAY ĐỔI: Chuyển init thành async và dùng await ---
+async function init() {
     console.log('DOM loaded, initializing...');
 
     if (!window.electronAPI || !window.electronAPI.getAssets) {
@@ -599,7 +645,7 @@ function init() {
     }
 
     setupEventListeners();
-    initCamera();
-    loadAssets();
+    await initCamera(); // <-- Dùng await
+    await loadAssets(); // <-- Dùng await
     setupDragDrop();
 }

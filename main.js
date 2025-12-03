@@ -35,7 +35,7 @@ function createWindow() {
     mainWindow.loadFile('renderer/index.html');
 
     // Open DevTools để debug
-    //mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools();
     mainWindow.setMenuBarVisibility(false);
 }
 

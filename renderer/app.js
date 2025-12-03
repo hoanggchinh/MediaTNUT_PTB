@@ -118,14 +118,19 @@ async function loadAssets() {
 
         // Render frames - preserve aspect ratio
         framesList.innerHTML = '';
+
+        // Reset selectedFrame trước khi render
+        selectedFrame = null;
+
         frames.forEach((frame, index) => {
             const div = document.createElement('div');
             div.className = 'frame-item';
 
-            // Đảm bảo frame đầu tiên luôn được chọn lại khi loadAssets được gọi
+            // Đảm bảo frame đầu tiên luôn được chọn
             if (index === 0) {
                 div.classList.add('selected');
                 selectedFrame = frame.name;
+                console.log('Auto-selected first frame:', frame.name);
             }
 
             const img = document.createElement('img');
@@ -140,6 +145,9 @@ async function loadAssets() {
         // Nếu không có frame nào, đặt selectedFrame = null
         if (frames.length === 0) {
             selectedFrame = null;
+            console.warn('No frames available!');
+        } else {
+            console.log('Frames loaded. Selected frame:', selectedFrame);
         }
 
         // Render icons/stickers
@@ -178,6 +186,7 @@ function selectFrame(frameName, divElement) {
 
     divElement.classList.add('selected');
     selectedFrame = frameName;
+    console.log('Frame selected:', frameName);
     updateEditorPreview();
 }
 
@@ -255,6 +264,14 @@ function goToEditor() {
         selectedFrame
     });
 
+    // KIỂM TRA NGAY TẠI ĐÂY
+    if (!selectedFrame) {
+        console.error('No frame selected! Cannot proceed to editor.');
+        alert('Lỗi: Không có frame nào được chọn. Vui lòng thử lại!');
+        captureBtn.disabled = false;
+        return;
+    }
+
     cameraScreen.classList.remove('active');
     editorScreen.classList.add('active');
 
@@ -277,7 +294,7 @@ function goToEditor() {
 
             // Calculate container size to fit within max constraints
             const maxWidth = 350;
-            const maxHeight = window.innerHeight - 250; // Leave space for button
+            const maxHeight = window.innerHeight - 250;
             const aspectRatio = frameWidth / frameHeight;
 
             let containerWidth = maxWidth;
@@ -329,18 +346,15 @@ function goToEditor() {
 
             updateEditorPreview();
         };
-        // Thêm xử lý lỗi tải frame
         tempImg.onerror = () => {
             console.error('Failed to load frame image for preview');
             alert('Lỗi tải frame ảnh!');
-            // Quay lại màn hình camera nếu frame lỗi
             backToCamera();
         };
         tempImg.src = frameData.data;
     } else {
         console.error('Frame data not found for:', selectedFrame);
         alert('Vui lòng chọn một frame ảnh!');
-        // Quay lại màn hình camera nếu không tìm thấy frame
         backToCamera();
     }
 }
@@ -371,10 +385,6 @@ function setupDragDrop() {
         e.dataTransfer.dropEffect = 'copy';
     });
 
-    // app.js
-
-// ... (bên trong hàm setupDragDrop, trong sự kiện 'drop')
-
     previewContainer.addEventListener('drop', async (e) => {
         e.preventDefault();
         const iconName = e.dataTransfer.getData('iconName');
@@ -384,26 +394,21 @@ function setupDragDrop() {
 
         const rect = previewContainer.getBoundingClientRect();
 
-        // Kích thước nhãn dán mặc định là 32% (đã định nghĩa trước đó)
         const STICKER_SIZE_PERCENT = 32;
-        const HALF_SIZE = STICKER_SIZE_PERCENT / 2; // = 16%
+        const HALF_SIZE = STICKER_SIZE_PERCENT / 2;
 
-        // 1. Tính toán tọa độ tâm thô (raw center) theo %
         const rawX = ((e.clientX - rect.left) / rect.width) * 100;
         const rawY = ((e.clientY - rect.top) / rect.height) * 100;
 
-        // 2. Kẹp (Clamp) tọa độ tâm để toàn bộ nhãn dán nằm trong phạm vi (16% đến 84%)
-        // Math.max(Min, Math.min(Max, Value))
         const clampedX = Math.max(HALF_SIZE, Math.min(100 - HALF_SIZE, rawX));
         const clampedY = Math.max(HALF_SIZE, Math.min(100 - HALF_SIZE, rawY));
-
 
         selectedStickers.push({
             name: iconName,
             data: iconData.data,
-            x: clampedX, // Tọa độ tâm đã được giới hạn (tính theo %)
-            y: clampedY, // Tọa độ tâm đã được giới hạn (tính theo %)
-            size: STICKER_SIZE_PERCENT // Kích thước theo %
+            x: clampedX,
+            y: clampedY,
+            size: STICKER_SIZE_PERCENT
         });
 
         updateStickersPreview();
@@ -453,39 +458,47 @@ function updateStickersPreview() {
 // Process and finish
 async function processAndFinish() {
     try {
+        console.log('=== PROCESS AND FINISH START ===');
+        console.log('Current selectedFrame:', selectedFrame);
+        console.log('Loaded frames count:', loadedFrames.length);
+
         doneBtn.disabled = true;
         doneBtn.textContent = 'Đang xử lý...';
+
+        // KIỂM TRA selectedFrame TRƯỚC KHI TIẾP TỤC
+        if (!selectedFrame) {
+            throw new Error('No frame selected! selectedFrame is null or undefined.');
+        }
 
         // Get frame dimensions
         const frameData = loadedFrames.find(f => f.name === selectedFrame);
 
-        // --- BƯỚC 1: KIỂM TRA DỮ LIỆU FRAME ĐỂ TRÁNH LỖI undefined ---
         if (!frameData) {
-            throw new Error(`Frame data not found for selected frame: ${selectedFrame}. Assets might not be loaded.`);
+            throw new Error(`Frame data not found for selected frame: ${selectedFrame}. Available frames: ${loadedFrames.map(f => f.name).join(', ')}`);
         }
-        // -----------------------------------------------------------
 
         const tempImg = new Image();
 
-        // --- BƯỚC 2: THÊM reject ĐỂ TRÁNH TREO HÀM KHI TẢI ẢNH LỖI ---
         await new Promise((resolve, reject) => {
             tempImg.onload = resolve;
-            tempImg.onerror = reject; // <-- Đã thêm reject
+            tempImg.onerror = () => reject(new Error('Failed to load frame image'));
             tempImg.src = frameData.data;
         });
-        // -------------------------------------------------------------
 
         const frameWidth = tempImg.width;
         const frameHeight = tempImg.height;
+
+        console.log('Frame dimensions:', { frameWidth, frameHeight });
 
         // Convert percentage positions to absolute pixels
         const absoluteStickers = selectedStickers.map(sticker => ({
             name: sticker.name,
             x: (sticker.x / 100) * frameWidth - ((sticker.size / 100) * frameWidth) / 2,
-            y: (sticker.y / 100) * frameHeight - ((sticker.size / 100) * frameWidth) / 2, // Đã sửa lỗi: dùng frameWidth cho cả x và y
+            y: (sticker.y / 100) * frameHeight - ((sticker.size / 100) * frameWidth) / 2,
             size: (sticker.size / 100) * frameWidth
         }));
 
+        console.log('Calling processImage...');
         const result = await window.electronAPI.processImage({
             photos: capturedPhotos,
             frameName: selectedFrame,
@@ -495,8 +508,10 @@ async function processAndFinish() {
 
         if (result.success) {
             window.processedImagePath = result.path;
+            console.log('Image processed successfully:', result.path);
 
             // Upload and get QR
+            console.log('Uploading to R2...');
             const uploadResult = await window.electronAPI.uploadAndGenQR(result.path);
 
             if (uploadResult.success) {
@@ -507,6 +522,8 @@ async function processAndFinish() {
                 // Show result screen
                 editorScreen.classList.remove('active');
                 resultScreen.classList.add('active');
+
+                console.log('=== PROCESS AND FINISH SUCCESS ===');
             } else {
                 alert('Lỗi upload: ' + uploadResult.error);
                 doneBtn.disabled = false;
@@ -518,10 +535,10 @@ async function processAndFinish() {
             doneBtn.textContent = 'Hoàn thành';
         }
     } catch (error) {
-        console.error('Error processing:', error);
-        // THAY ĐỔI: Thêm error.message để debug dễ hơn
+        console.error('=== ERROR IN PROCESS AND FINISH ===');
+        console.error('Error details:', error);
+        console.error('Stack:', error.stack);
         alert('Có lỗi xảy ra khi xử lý ảnh! ' + error.message);
-        // Đảm bảo nút được reset DÙ CÓ LỖI XẢY RA
         doneBtn.disabled = false;
         doneBtn.textContent = 'Hoàn thành';
     }
@@ -552,7 +569,10 @@ async function printPhoto() {
 }
 
 // Reset and start new photo session
-async function resetApp() { // <-- THAY ĐỔI: Chuyển thành async
+async function resetApp() {
+    console.log('=== RESET APP START ===');
+
+    // Reset all state
     capturedPhotos = [];
     selectedStickers = [];
     currentPhotoIndex = 0;
@@ -570,9 +590,14 @@ async function resetApp() { // <-- THAY ĐỔI: Chuyển thành async
     cameraScreen.classList.add('active');
 
     captureBtn.disabled = false;
+    doneBtn.disabled = false;
+    doneBtn.textContent = 'Hoàn thành';
 
-    // --- THAY ĐỔI QUAN TRỌNG: Dùng await để đảm bảo selectedFrame được gán lại ---
+    // QUAN TRỌNG: Load lại assets và chọn frame đầu tiên
     await loadAssets();
+
+    console.log('After loadAssets - selectedFrame:', selectedFrame);
+    console.log('=== RESET APP COMPLETE ===');
 }
 
 // Switch camera
@@ -634,9 +659,8 @@ if (document.readyState === 'loading') {
     init();
 }
 
-// --- THAY ĐỔI: Chuyển init thành async và dùng await ---
 async function init() {
-    console.log('DOM loaded, initializing...');
+    console.log('=== INIT START ===');
 
     if (!window.electronAPI || !window.electronAPI.getAssets) {
         console.error('ERROR: window.electronAPI not exposed! Check preload.js');
@@ -645,7 +669,10 @@ async function init() {
     }
 
     setupEventListeners();
-    await initCamera(); // <-- Dùng await
-    await loadAssets(); // <-- Dùng await
+    await initCamera();
+    await loadAssets();
     setupDragDrop();
+
+    console.log('Init complete. Selected frame:', selectedFrame);
+    console.log('=== INIT COMPLETE ===');
 }

@@ -63,6 +63,13 @@ const newPhotoBtn = document.getElementById('newPhotoBtn');
 let loadedFrames = [];
 let loadedIcons = [];
 
+// Interaction state
+let isDraggingIcon = false;
+let isResizingIcon = false;
+let activeIconIndex = -1;
+let dragOffset = { x: 0, y: 0 };
+let initialResizeState = { width: 0, mouseX: 0 };
+
 // Initialize camera
 async function initCamera() {
     try {
@@ -89,7 +96,7 @@ async function initCamera() {
             video: {
                 width: { ideal: 1280 },
                 height: { ideal: 960 },
-                aspectRatio: { ideal: 4/3 },
+                aspectRatio: { ideal: 4 / 3 },
                 deviceId: availableCameras[currentCameraIndex]?.deviceId
             }
         });
@@ -411,9 +418,89 @@ function updateStickersPreview() {
             updateStickersPreview();
         };
 
+        // Add resize handle
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+        resizeHandle.onmousedown = (e) => {
+            e.stopPropagation(); // Prevent drag start
+            isResizingIcon = true;
+            activeIconIndex = index;
+            const rect = stickerDiv.getBoundingClientRect();
+            initialResizeState = {
+                width: rect.width,
+                mouseX: e.clientX
+            };
+        };
+
+        // Drag start
+        stickerDiv.onmousedown = (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.className === 'resize-handle') return;
+            isDraggingIcon = true;
+            activeIconIndex = index;
+            const rect = stickerDiv.getBoundingClientRect();
+            dragOffset = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        };
+
         stickerDiv.appendChild(img);
         stickerDiv.appendChild(removeBtn);
+        stickerDiv.appendChild(resizeHandle);
         previewIconsContainer.appendChild(stickerDiv);
+    });
+}
+
+// Setup global interactions (drag & resize)
+function setupGlobalInteractions() {
+    document.addEventListener('mousemove', (e) => {
+        if (activeIconIndex === -1) return;
+
+        const previewContainer = document.querySelector('.preview-container');
+        if (!previewContainer) return;
+        const containerRect = previewContainer.getBoundingClientRect();
+
+        if (isDraggingIcon) {
+            e.preventDefault();
+            let newX = e.clientX - containerRect.left - dragOffset.x;
+            let newY = e.clientY - containerRect.top - dragOffset.y;
+
+            // Convert to percentage
+            let percentX = (newX / containerRect.width) * 100;
+            let percentY = (newY / containerRect.height) * 100;
+
+            // Update model
+            selectedStickers[activeIconIndex].x = percentX;
+            selectedStickers[activeIconIndex].y = percentY;
+
+            // Update view directly
+            const stickerDiv = previewIconsContainer.children[activeIconIndex];
+            if (stickerDiv) {
+                stickerDiv.style.left = percentX + '%';
+                stickerDiv.style.top = percentY + '%';
+            }
+        } else if (isResizingIcon) {
+            e.preventDefault();
+            const deltaX = e.clientX - initialResizeState.mouseX;
+            // Calculate new size in percentage
+            const newPixelSize = initialResizeState.width + deltaX;
+            const newPercentSize = (newPixelSize / containerRect.width) * 100;
+
+            if (newPercentSize > 5) { // Min size 5%
+                selectedStickers[activeIconIndex].size = newPercentSize;
+
+                const stickerDiv = previewIconsContainer.children[activeIconIndex];
+                if (stickerDiv) {
+                    stickerDiv.style.width = newPercentSize + '%';
+                }
+            }
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        isDraggingIcon = false;
+        isResizingIcon = false;
+        activeIconIndex = -1;
     });
 }
 
@@ -547,7 +634,7 @@ async function switchCamera() {
             video: {
                 width: { ideal: 1280 },
                 height: { ideal: 960 },
-                aspectRatio: { ideal: 4/3 },
+                aspectRatio: { ideal: 4 / 3 },
                 deviceId: { exact: availableCameras[currentCameraIndex].deviceId }
             }
         });
@@ -602,4 +689,5 @@ function init() {
     initCamera();
     loadAssets();
     setupDragDrop();
+    setupGlobalInteractions();
 }

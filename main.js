@@ -23,7 +23,7 @@ function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
-        fullscreen: false, // Set true nếu muốn fullscreen
+        fullscreen: true, //false, // Set true nếu muốn fullscreen
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -35,7 +35,8 @@ function createWindow() {
     mainWindow.loadFile('renderer/index.html');
 
     // Open DevTools để debug
-    mainWindow.webContents.openDevTools();
+    //mainWindow.webContents.openDevTools();
+    mainWindow.setMenuBarVisibility(false);
 }
 
 app.whenReady().then(createWindow);

@@ -173,6 +173,19 @@ async function loadAssets() {
             };
 
             div.appendChild(img);
+
+            // Click to add sticker
+            img.onclick = () => {
+                const STICKER_SIZE_PERCENT = 32;
+                selectedStickers.push({
+                    name: icon.name,
+                    data: icon.data,
+                    x: 50,
+                    y: 50,
+                    size: STICKER_SIZE_PERCENT
+                });
+                updateStickersPreview();
+            };
             iconsList.appendChild(div);
         });
 

@@ -73,6 +73,10 @@ let selectedIconIndex = -1; // Track currently selected icon for slider
 let dragOffset = { x: 0, y: 0 };
 let initialResizeState = { width: 0, mouseX: 0 };
 
+// Hybrid touch/mouse check
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+console.log('Device type:', isTouchDevice ? 'Touch' : 'Mouse');
+
 // Initialize camera
 async function initCamera() {
     try {
@@ -489,14 +493,18 @@ function updateStickersPreview() {
 
         const startResize = (e) => {
             e.stopPropagation();
-            e.preventDefault(); // Prevent scrolling on touch
+            // Prevent default on touch to prevent scrolling
+            if (isTouchDevice && e.type === 'touchstart') {
+                e.preventDefault();
+            }
+
             isResizingIcon = true;
             activeIconIndex = index;
             selectedIconIndex = index;
             showIconControls(sticker.size);
             updateStickersPreview(); // To update selection visual
 
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientX = (isTouchDevice && e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
             const rect = stickerDiv.getBoundingClientRect();
             initialResizeState = {
                 width: rect.width,
@@ -504,15 +512,21 @@ function updateStickersPreview() {
             };
         };
 
-        resizeHandle.onmousedown = startResize;
-        resizeHandle.ontouchstart = startResize;
+        // Hybrid listener attachment
+        if (isTouchDevice) {
+            resizeHandle.ontouchstart = startResize;
+        } else {
+            resizeHandle.onmousedown = startResize;
+        }
 
         // Drag start handler
         const startDrag = (e) => {
             if (e.target.tagName === 'BUTTON' || e.target.className === 'resize-handle') return;
 
-            // Prevent default to stop scrolling/selection, but allow click if not moving
-            // e.preventDefault(); 
+            // Prevent default on touch to prevent scrolling
+            if (isTouchDevice && e.type === 'touchstart') {
+                e.preventDefault();
+            }
 
             isDraggingIcon = true;
             activeIconIndex = index;
@@ -521,8 +535,8 @@ function updateStickersPreview() {
             updateStickersPreview(); // To update selection visual
 
             const rect = stickerDiv.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const clientX = (isTouchDevice && e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+            const clientY = (isTouchDevice && e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
 
             dragOffset = {
                 x: clientX - rect.left,
@@ -530,8 +544,12 @@ function updateStickersPreview() {
             };
         };
 
-        stickerDiv.onmousedown = startDrag;
-        stickerDiv.ontouchstart = startDrag;
+        // Hybrid listener attachment
+        if (isTouchDevice) {
+            stickerDiv.ontouchstart = startDrag;
+        } else {
+            stickerDiv.onmousedown = startDrag;
+        }
 
         stickerDiv.appendChild(img);
         stickerDiv.appendChild(removeBtn);
@@ -573,19 +591,8 @@ function setupGlobalInteractions() {
         });
     }
 
-    // Click outside to deselect
-    document.addEventListener('mousedown', (e) => {
-        if (!e.target.closest('.placed-icon') &&
-            !e.target.closest('.icon-controls') &&
-            !e.target.closest('.icon-item')) { // Don't deselect when adding new icon
-            selectedIconIndex = -1;
-            hideIconControls();
-            updateStickersPreview();
-        }
-    });
-
-    // Touch outside to deselect
-    document.addEventListener('touchstart', (e) => {
+    // Deselect handler
+    const handleDeselect = (e) => {
         if (!e.target.closest('.placed-icon') &&
             !e.target.closest('.icon-controls') &&
             !e.target.closest('.icon-item')) {
@@ -593,7 +600,14 @@ function setupGlobalInteractions() {
             hideIconControls();
             updateStickersPreview();
         }
-    });
+    };
+
+    // Hybrid deselect listener
+    if (isTouchDevice) {
+        document.addEventListener('touchstart', handleDeselect);
+    } else {
+        document.addEventListener('mousedown', handleDeselect);
+    }
 
     const handleMove = (e) => {
         if (activeIconIndex === -1) return;
@@ -602,11 +616,12 @@ function setupGlobalInteractions() {
         if (!previewContainer) return;
         const containerRect = previewContainer.getBoundingClientRect();
 
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const clientX = (isTouchDevice && e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+        const clientY = (isTouchDevice && e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
 
         if (isDraggingIcon) {
-            e.preventDefault(); // Prevent scrolling while dragging
+            if (isTouchDevice) e.preventDefault(); // Prevent scrolling while dragging
+
             let newX = clientX - containerRect.left - dragOffset.x;
             let newY = clientY - containerRect.top - dragOffset.y;
 
@@ -625,7 +640,8 @@ function setupGlobalInteractions() {
                 stickerDiv.style.top = percentY + '%';
             }
         } else if (isResizingIcon) {
-            e.preventDefault();
+            if (isTouchDevice) e.preventDefault();
+
             const deltaX = clientX - initialResizeState.mouseX;
             // Calculate new size in percentage
             const newPixelSize = initialResizeState.width + deltaX;
@@ -653,11 +669,14 @@ function setupGlobalInteractions() {
         activeIconIndex = -1;
     };
 
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('touchmove', handleMove, { passive: false });
-
-    document.addEventListener('mouseup', handleEnd);
-    document.addEventListener('touchend', handleEnd);
+    // Hybrid global listeners
+    if (isTouchDevice) {
+        document.addEventListener('touchmove', handleMove, { passive: false });
+        document.addEventListener('touchend', handleEnd);
+    } else {
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('mouseup', handleEnd);
+    }
 }
 
 // Process and finish

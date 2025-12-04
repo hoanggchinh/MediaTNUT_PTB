@@ -44,6 +44,8 @@ const previewFrameOverlay = document.getElementById('previewFrameOverlay');
 const previewIconsContainer = document.getElementById('previewIconsContainer');
 const editorCanvas = document.getElementById('editorCanvas');
 const doneBtn = document.getElementById('doneBtn');
+const iconControls = document.getElementById('iconControls');
+const iconSizeSlider = document.getElementById('iconSizeSlider');
 
 // Preview photo elements
 const previewPhotoElements = [
@@ -67,6 +69,7 @@ let loadedIcons = [];
 let isDraggingIcon = false;
 let isResizingIcon = false;
 let activeIconIndex = -1;
+let selectedIconIndex = -1; // Track currently selected icon for slider
 let dragOffset = { x: 0, y: 0 };
 let initialResizeState = { width: 0, mouseX: 0 };
 
@@ -442,6 +445,9 @@ function updateStickersPreview() {
     selectedStickers.forEach((sticker, index) => {
         const stickerDiv = document.createElement('div');
         stickerDiv.className = 'placed-icon';
+        if (index === selectedIconIndex) {
+            stickerDiv.classList.add('selected');
+        }
         stickerDiv.style.left = sticker.x + '%';
         stickerDiv.style.top = sticker.y + '%';
         stickerDiv.style.width = sticker.size + '%';
@@ -464,36 +470,68 @@ function updateStickersPreview() {
         removeBtn.style.cursor = 'pointer';
         removeBtn.style.fontSize = '18px';
         removeBtn.style.lineHeight = '1';
-        removeBtn.onclick = () => {
+        removeBtn.style.zIndex = '20';
+        removeBtn.onclick = (e) => {
+            e.stopPropagation(); // Prevent selection
             selectedStickers.splice(index, 1);
+            if (selectedIconIndex === index) {
+                selectedIconIndex = -1;
+                hideIconControls();
+            } else if (selectedIconIndex > index) {
+                selectedIconIndex--;
+            }
             updateStickersPreview();
         };
 
         // Add resize handle
         const resizeHandle = document.createElement('div');
         resizeHandle.className = 'resize-handle';
-        resizeHandle.onmousedown = (e) => {
-            e.stopPropagation(); // Prevent drag start
+
+        const startResize = (e) => {
+            e.stopPropagation();
+            e.preventDefault(); // Prevent scrolling on touch
             isResizingIcon = true;
             activeIconIndex = index;
+            selectedIconIndex = index;
+            showIconControls(sticker.size);
+            updateStickersPreview(); // To update selection visual
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const rect = stickerDiv.getBoundingClientRect();
             initialResizeState = {
                 width: rect.width,
-                mouseX: e.clientX
+                mouseX: clientX
             };
         };
 
-        // Drag start
-        stickerDiv.onmousedown = (e) => {
+        resizeHandle.onmousedown = startResize;
+        resizeHandle.ontouchstart = startResize;
+
+        // Drag start handler
+        const startDrag = (e) => {
             if (e.target.tagName === 'BUTTON' || e.target.className === 'resize-handle') return;
+
+            // Prevent default to stop scrolling/selection, but allow click if not moving
+            // e.preventDefault(); 
+
             isDraggingIcon = true;
             activeIconIndex = index;
+            selectedIconIndex = index;
+            showIconControls(sticker.size);
+            updateStickersPreview(); // To update selection visual
+
             const rect = stickerDiv.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
             dragOffset = {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
+                x: clientX - rect.left,
+                y: clientY - rect.top
             };
         };
+
+        stickerDiv.onmousedown = startDrag;
+        stickerDiv.ontouchstart = startDrag;
 
         stickerDiv.appendChild(img);
         stickerDiv.appendChild(removeBtn);
@@ -502,19 +540,75 @@ function updateStickersPreview() {
     });
 }
 
+function showIconControls(size) {
+    if (iconControls) {
+        iconControls.classList.add('active');
+        if (iconSizeSlider) {
+            iconSizeSlider.value = size;
+        }
+    }
+}
+
+function hideIconControls() {
+    if (iconControls) {
+        iconControls.classList.remove('active');
+    }
+}
+
 // Setup global interactions (drag & resize)
 function setupGlobalInteractions() {
-    document.addEventListener('mousemove', (e) => {
+    // Slider input
+    if (iconSizeSlider) {
+        iconSizeSlider.addEventListener('input', (e) => {
+            if (selectedIconIndex !== -1 && selectedStickers[selectedIconIndex]) {
+                const newSize = parseFloat(e.target.value);
+                selectedStickers[selectedIconIndex].size = newSize;
+
+                // Update view
+                const stickerDiv = previewIconsContainer.children[selectedIconIndex];
+                if (stickerDiv) {
+                    stickerDiv.style.width = newSize + '%';
+                }
+            }
+        });
+    }
+
+    // Click outside to deselect
+    document.addEventListener('mousedown', (e) => {
+        if (!e.target.closest('.placed-icon') &&
+            !e.target.closest('.icon-controls') &&
+            !e.target.closest('.icon-item')) { // Don't deselect when adding new icon
+            selectedIconIndex = -1;
+            hideIconControls();
+            updateStickersPreview();
+        }
+    });
+
+    // Touch outside to deselect
+    document.addEventListener('touchstart', (e) => {
+        if (!e.target.closest('.placed-icon') &&
+            !e.target.closest('.icon-controls') &&
+            !e.target.closest('.icon-item')) {
+            selectedIconIndex = -1;
+            hideIconControls();
+            updateStickersPreview();
+        }
+    });
+
+    const handleMove = (e) => {
         if (activeIconIndex === -1) return;
 
         const previewContainer = document.querySelector('.preview-container');
         if (!previewContainer) return;
         const containerRect = previewContainer.getBoundingClientRect();
 
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
         if (isDraggingIcon) {
-            e.preventDefault();
-            let newX = e.clientX - containerRect.left - dragOffset.x;
-            let newY = e.clientY - containerRect.top - dragOffset.y;
+            e.preventDefault(); // Prevent scrolling while dragging
+            let newX = clientX - containerRect.left - dragOffset.x;
+            let newY = clientY - containerRect.top - dragOffset.y;
 
             // Convert to percentage
             let percentX = (newX / containerRect.width) * 100;
@@ -532,7 +626,7 @@ function setupGlobalInteractions() {
             }
         } else if (isResizingIcon) {
             e.preventDefault();
-            const deltaX = e.clientX - initialResizeState.mouseX;
+            const deltaX = clientX - initialResizeState.mouseX;
             // Calculate new size in percentage
             const newPixelSize = initialResizeState.width + deltaX;
             const newPercentSize = (newPixelSize / containerRect.width) * 100;
@@ -544,15 +638,26 @@ function setupGlobalInteractions() {
                 if (stickerDiv) {
                     stickerDiv.style.width = newPercentSize + '%';
                 }
+
+                // Update slider if resizing via handle
+                if (iconSizeSlider && selectedIconIndex === activeIconIndex) {
+                    iconSizeSlider.value = newPercentSize;
+                }
             }
         }
-    });
+    };
 
-    document.addEventListener('mouseup', () => {
+    const handleEnd = () => {
         isDraggingIcon = false;
         isResizingIcon = false;
         activeIconIndex = -1;
-    });
+    };
+
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('touchmove', handleMove, { passive: false });
+
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchend', handleEnd);
 }
 
 // Process and finish
